@@ -1,0 +1,273 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="TreinoPro">
+<meta name="theme-color" content="#0E1116"><link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icon-180.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
+</head><body><title>TreinoPro</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one column, sticky day strip on top, workout clock card, exercise cards, rest stopwatch docked at bottom */
+:root{
+  --bg:#0E1116; --panel:#171B22; --panel2:#1F242D; --line:#2A303B;
+  --fg:#EEF1F5; --muted:#8C95A3; --ok:#2FBF71;
+  --day:#1F6FEB;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--f-body);font-size:15px;-webkit-tap-highlight-color:transparent;padding-bottom:calc(132px + env(safe-area-inset-bottom,0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--bg)}
+.wrap{max-width:640px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible{outline:2px solid var(--day);outline-offset:2px}
+
+/* top */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);padding-block:12px 10px;border-bottom:1px solid var(--line)}
+.brand{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.brand h1{font-family:var(--f-display);font-weight:800;font-size:26px;letter-spacing:.02em;margin:0;text-transform:uppercase}
+.brand h1 span{color:var(--day)}
+.brand .today{color:var(--muted);font-size:13px}
+.tabs{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:10px}
+.tab{border-radius:10px;padding:7px 0 6px;background:var(--panel);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:1px;position:relative}
+.tab b{font-family:var(--f-display);font-size:16px;letter-spacing:.04em}
+.tab small{font-size:10px;color:var(--muted);font-weight:600}
+.tab.rest b{color:var(--muted)}
+.tab.on{background:var(--c);border-color:var(--c)}
+.tab.on small{color:#fff;opacity:.85}
+.tab .dot{position:absolute;top:4px;right:5px;width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.tab.istoday::after{content:"";position:absolute;bottom:-5px;left:35%;right:35%;height:3px;border-radius:2px;background:var(--fg)}
+.view{display:flex;gap:6px;margin-top:10px}
+.view button{flex:1;padding:7px;border-radius:8px;font-weight:600;font-size:13px;color:var(--muted);background:var(--panel)}
+.view button.on{color:var(--fg);background:var(--panel2);box-shadow:inset 0 0 0 1px var(--line)}
+
+/* day header */
+.dayhead{margin-top:16px;border-radius:14px;padding:14px 16px;background:var(--day);display:flex;justify-content:space-between;align-items:center;gap:12px}
+.dayhead h2{margin:0;font-family:var(--f-display);font-weight:800;font-size:30px;line-height:1;text-transform:uppercase;letter-spacing:.02em}
+.dayhead p{margin:3px 0 0;font-size:13px;opacity:.9}
+.ring{width:54px;height:54px;flex:none}
+.ring circle{fill:none;stroke-width:6}
+
+/* workout clock */
+.clock{margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;justify-content:space-between}
+.clock .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.clock .t{font-family:var(--f-mono);font-weight:700;font-size:28px;font-variant-numeric:tabular-nums}
+.clock .since{font-size:12px;color:var(--muted)}
+.btn{border-radius:12px;padding:12px 16px;font-weight:700;font-size:15px;background:var(--day);color:#fff;white-space:nowrap}
+.btn.ghost{background:var(--panel2);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line)}
+.btn.stop{background:#D1453B}
+
+/* list */
+.list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.ex{display:grid;grid-template-columns:96px 1fr 52px;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-left:5px solid var(--day);border-radius:12px;padding:8px 8px 8px 8px;transition:opacity .2s}
+.ex.done{opacity:.55}
+.ex.done .nm{text-decoration:line-through;text-decoration-color:var(--muted)}
+.anim{position:relative;aspect-ratio:3/2;border-radius:8px;overflow:hidden;background:var(--panel2);max-width:100%}
+.anim img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.anim img+img{animation:flip 1.8s steps(1) infinite}
+@keyframes flip{0%{opacity:0}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.anim img+img{animation:none;opacity:0}}
+.info{min-width:0;text-align:left;padding:0}
+.grp{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--day)}
+.nm{font-weight:600;font-size:16px;line-height:1.2;margin-top:1px}
+.sr{font-family:var(--f-mono);font-size:12px;color:var(--muted);margin-top:3px}
+.chk{width:44px;height:44px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;justify-self:center}
+.chk svg{width:22px;height:22px;opacity:0}
+.ex.done .chk{background:var(--ok);border-color:var(--ok)}
+.ex.done .chk svg{opacity:1}
+.restday{margin-top:16px;background:var(--panel);border:1px dashed var(--line);border-radius:14px;padding:28px 18px;text-align:center;color:var(--muted)}
+.restday h2{font-family:var(--f-display);font-size:30px;color:var(--fg);margin:0 0 6px;text-transform:uppercase}
+
+/* history */
+.hist{margin-top:16px;display:flex;flex-direction:column;gap:8px}
+.hrow{display:grid;grid-template-columns:8px 1fr auto;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.hrow i{width:8px;align-self:stretch;border-radius:4px}
+.hrow b{font-family:var(--f-display);font-size:18px;text-transform:uppercase}
+.hrow .m{font-size:12px;color:var(--muted)}
+.hrow .d{font-family:var(--f-mono);font-weight:700;font-variant-numeric:tabular-nums}
+.empty{color:var(--muted);text-align:center;padding:30px 10px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px}
+.stat b{display:block;font-family:var(--f-mono);font-size:20px}
+.stat span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+
+/* rest dock */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:25;background:var(--panel);border-top:1px solid var(--line);padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));padding-top:10px}
+.dock .wrap{display:flex;align-items:center;gap:10px}
+.dock .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.dock .t{font-family:var(--f-mono);font-weight:700;font-size:38px;line-height:1;font-variant-numeric:tabular-nums}
+.dock .t.run{color:#F5B83D}
+.dock .grow{flex:1;min-width:0}
+.round{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:#F5B83D;color:#111;flex:none}
+.round.sec{background:var(--panel2);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line);width:48px;height:48px}
+.round svg{width:24px;height:24px}
+
+/* sheet */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:40}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--panel);border-radius:18px 18px 0 0;max-height:92%;overflow:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+.sheet .bar{height:5px;width:44px;border-radius:3px;background:var(--line);margin:8px auto 10px}
+.sheet .anim{border-radius:12px}
+.sheet h3{font-family:var(--f-display);font-size:28px;margin:12px 0 2px;line-height:1.05;text-transform:uppercase}
+.sheet .row{display:flex;gap:8px;margin-top:14px}
+.sheet .row .btn{flex:1;text-align:center}
+.sets{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.set{width:46px;height:46px;border-radius:10px;background:var(--panel2);box-shadow:inset 0 0 0 1px var(--line);font-family:var(--f-mono);font-weight:700}
+.set.on{background:var(--day);box-shadow:none}
+.note{font-size:12px;color:var(--muted);margin-top:8px}
+</style>
+
+<header class="top"><div class="wrap">
+  <div class="brand"><h1>Treino<span>Pro</span></h1><div class="today" id="today"></div></div>
+  <nav class="tabs" id="tabs"></nav>
+  <div class="view"><button id="vTreino" class="on">Treino</button><button id="vHist">Histórico</button></div>
+</div></header>
+
+<main class="wrap" id="main"></main>
+
+<div class="dock"><div class="wrap">
+  <div class="grow"><div class="lbl">Descanso</div><div class="t" id="restT">00:00</div></div>
+  <button class="round sec" id="restReset" aria-label="Zerar descanso"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/></svg></button>
+  <button class="round" id="restGo" aria-label="Iniciar descanso"></button>
+</div></div>
+
+<div class="scrim" id="scrim" hidden></div>
+<div class="sheet" id="sheet" hidden><div class="wrap" id="sheetIn"></div></div>
+
+<script>
+const DAYS = [{"d": "SEGUNDA", "t": "TREINO A", "c": "#1F6FEB", "ex": [{"g": "Início", "n": "Barra Fixa", "s": "Máx. reps", "i": "Pullups"}, {"g": "Perna", "n": "Agachamento", "s": "3 x 8-10", "i": "Barbell_Full_Squat"}, {"g": "Perna", "n": "Cadeira Extensora", "s": "3 x 12", "i": "Leg_Extensions"}, {"g": "Peito", "n": "Supino Reto", "s": "3 x 10", "i": "Barbell_Bench_Press_-_Medium_Grip"}, {"g": "Peito", "n": "Crucifixo Inclinado (Halteres)", "s": "3 x 12", "i": "Incline_Dumbbell_Flyes"}, {"g": "Costas", "n": "Pulley Frente Aberto", "s": "3 x 10", "i": "Wide-Grip_Lat_Pulldown"}, {"g": "Costas", "n": "Remada Serrote (apoio no banco)", "s": "3 x 12", "i": "One-Arm_Dumbbell_Row"}, {"g": "Ombro", "n": "Desenvolvimento", "s": "3 x 10", "i": "Dumbbell_Shoulder_Press"}, {"g": "Ombro", "n": "Crucifixo Inverso (Máquina)", "s": "3 x 12-15", "i": "Reverse_Machine_Flyes"}, {"g": "Bíceps", "n": "Rosca Direta (Barra W)", "s": "3 x 12", "i": "EZ-Bar_Curl"}, {"g": "Bíceps", "n": "Rosca Bíceps no Crossover (polia baixa)", "s": "3 x 12", "i": "Standing_One-Arm_Cable_Curl"}, {"g": "Tríceps", "n": "Tríceps Testa Polia", "s": "3 x 12", "i": "Cable_Lying_Triceps_Extension"}, {"g": "Panturrilha", "n": "Panturrilha Banco", "s": "4 x 15-20", "i": "Seated_Calf_Raise"}]}, {"d": "TERÇA", "t": "TREINO B", "c": "#D93F0B", "ex": [{"g": "Início", "n": "Barra Fixa", "s": "Máx. reps", "i": "Pullups"}, {"g": "Perna", "n": "Flexora Sentada", "s": "3 x 12-15", "i": "Seated_Leg_Curl"}, {"g": "Perna", "n": "Cadeira Abdutora", "s": "3 x 15", "i": "Thigh_Abductor"}, {"g": "Peito", "n": "Supino Inclinado", "s": "3 x 10", "i": "Barbell_Incline_Bench_Press_-_Medium_Grip"}, {"g": "Peito", "n": "Cross Over Polia Baixa", "s": "3 x 12", "i": "Low_Cable_Crossover"}, {"g": "Costas", "n": "Puxada Máquina", "s": "3 x 12", "i": "Leverage_High_Row"}, {"g": "Costas", "n": "Pulldown Braços Estendidos (Corda)", "s": "3 x 12", "i": "Rope_Straight-Arm_Pulldown"}, {"g": "Ombro", "n": "Elevação Lateral", "s": "3 x 12-15", "i": "Side_Lateral_Raise"}, {"g": "Ombro", "n": "Elevação Frontal", "s": "3 x 12", "i": "Front_Dumbbell_Raise"}, {"g": "Bíceps", "n": "Rosca Scott (Barra W)", "s": "3 x 10", "i": "Preacher_Curl"}, {"g": "Bíceps", "n": "Rosca Inversa", "s": "3 x 12", "i": "Reverse_Barbell_Curl"}, {"g": "Tríceps", "n": "Tríceps Corda", "s": "3 x 12", "i": "Triceps_Pushdown_-_Rope_Attachment"}, {"g": "Lombar", "n": "Banco Lombar", "s": "3 x 15", "i": "Hyperextensions_Back_Extensions"}]}, {"d": "QUARTA", "t": null, "c": null, "ex": null}, {"d": "QUINTA", "t": "TREINO C", "c": "#1A7F37", "ex": [{"g": "Início", "n": "Barra Fixa", "s": "Máx. reps", "i": "Pullups"}, {"g": "Perna", "n": "Leg Press 45°", "s": "3 x 10-12", "i": "Leg_Press"}, {"g": "Perna", "n": "Adutora Máquina", "s": "3 x 15", "i": "Thigh_Adductor"}, {"g": "Peito", "n": "Supino Declinado", "s": "3 x 10", "i": "Decline_Barbell_Bench_Press"}, {"g": "Peito", "n": "Crucifixo Reto (Halteres)", "s": "3 x 12", "i": "Dumbbell_Flyes"}, {"g": "Costas", "n": "Remada Baixa", "s": "3 x 12", "i": "Seated_Cable_Rows"}, {"g": "Costas", "n": "Puxada Supinada (pegada inversa)", "s": "3 x 12", "i": "Underhand_Cable_Pulldowns"}, {"g": "Ombro", "n": "Remada Suspensa (Corda)", "s": "3 x 15", "i": "Face_Pull"}, {"g": "Ombro", "n": "Desenvolvimento Arnold (sentado)", "s": "3 x 10", "i": "Arnold_Dumbbell_Press"}, {"g": "Bíceps", "n": "Rosca Alternada Inclinada", "s": "3 x 10", "i": "Alternate_Incline_Dumbbell_Curl"}, {"g": "Bíceps", "n": "Rosca Concentrada", "s": "3 x 12", "i": "Concentration_Curls"}, {"g": "Tríceps", "n": "Tríceps Francês Polia", "s": "3 x 12", "i": "Cable_Rope_Overhead_Triceps_Extension"}, {"g": "Panturrilha", "n": "Panturrilha no Leg Press", "s": "4 x 15-20", "i": "Calf_Press_On_The_Leg_Press_Machine"}]}, {"d": "SEXTA", "t": null, "c": null, "ex": null}, {"d": "SÁBADO", "t": "TREINO D", "c": "#8250DF", "ex": [{"g": "Início", "n": "Barra Fixa", "s": "Máx. reps", "i": "Pullups"}, {"g": "Perna", "n": "Afundo", "s": "3 x 10 (cada)", "i": "Dumbbell_Lunges"}, {"g": "Perna", "n": "Mesa Flexora", "s": "3 x 12", "i": "Lying_Leg_Curls"}, {"g": "Peito", "n": "Cross Over Polia Alta", "s": "3 x 12", "i": "Cable_Crossover"}, {"g": "Peito", "n": "Voador", "s": "3 x 12-15", "i": "Butterfly"}, {"g": "Costas", "n": "Remada Máquina Unilateral", "s": "3 x 12", "i": "Leverage_Iso_Row"}, {"g": "Costas", "n": "Pulley Frente Fechado (Triângulo)", "s": "3 x 12", "i": "V-Bar_Pulldown"}, {"g": "Ombro", "n": "Encolhimento", "s": "3 x 12", "i": "Dumbbell_Shrug"}, {"g": "Ombro", "n": "Elevação Lateral na Polia", "s": "3 x 12", "i": "Cable_Seated_Lateral_Raise"}, {"g": "Bíceps", "n": "Rosca Martelo", "s": "3 x 12", "i": "Hammer_Curls"}, {"g": "Bíceps", "n": "Rosca Bíceps no Crossover (polia baixa)", "s": "3 x 12", "i": "Standing_One-Arm_Cable_Curl"}, {"g": "Tríceps", "n": "Tríceps Cabo Individual", "s": "3 x 12", "i": "Cable_One_Arm_Tricep_Extension"}, {"g": "Lombar", "n": "Banco Lombar", "s": "3 x 15", "i": "Hyperextensions_Back_Extensions"}]}, {"d": "DOMINGO", "t": null, "c": null, "ex": null}];
+const SHORT=["SEG","TER","QUA","QUI","SEX","SÁB","DOM"];
+const IMG=i=>[`img/${i}_0.jpg`,`img/${i}_1.jpg`];
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,"0");
+const fmt=ms=>{const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor(s%3600/60);return (h?h+":":"")+pad(m)+":"+pad(s%60)};
+const dkey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const load=(k,f)=>{try{const v=localStorage.getItem("tp_"+k);return v?JSON.parse(v):f}catch(e){return f}};
+const save=(k,v)=>{try{localStorage.setItem("tp_"+k,JSON.stringify(v))}catch(e){}};
+
+let S={
+  done:load("done",{}),      // {date:{dayIdx:[exIdx]}}
+  sets:load("sets",{}),      // {date:{"d-e":n}}
+  hist:load("hist",[]),      // [{date,day,start,end,n,total}]
+  work:load("work",null),    // {start,day}
+  rest:load("rest",{run:false,start:0,acc:0}),
+  view:"treino"
+};
+const todayIdx=(new Date().getDay()+6)%7;
+let sel=todayIdx;
+const T=()=>dkey(new Date());
+const doneList=(d)=>((S.done[T()]||{})[d]||[]);
+
+function renderTabs(){
+  $("tabs").innerHTML=DAYS.map((d,i)=>{
+    const rest=!d.ex, n=doneList(i).length, full=d.ex&&n===d.ex.length;
+    const c=d.c||"#3A4150";
+    return `<button class="tab ${rest?'rest':''} ${i===sel&&S.view==='treino'?'on':''} ${i===todayIdx?'istoday':''}" style="--c:${c}" data-i="${i}" aria-label="${d.d}">
+      ${full?'<span class="dot"></span>':''}<b>${SHORT[i]}</b><small>${rest?'off':d.t.replace('TREINO ','')}</small></button>`}).join("");
+  $("tabs").querySelectorAll(".tab").forEach(b=>b.onclick=()=>{sel=+b.dataset.i;S.view="treino";render()});
+  const dt=new Date();$("today").textContent=dt.toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"short"});
+}
+
+function ring(p,c){const r=23,C=2*Math.PI*r;return `<svg class="ring" viewBox="0 0 54 54"><circle cx="27" cy="27" r="${r}" stroke="rgba(255,255,255,.25)"/><circle cx="27" cy="27" r="${r}" stroke="#fff" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-p)}" stroke-linecap="round" transform="rotate(-90 27 27)"/><text x="27" y="32" text-anchor="middle" fill="#fff" font-family="JetBrains Mono,monospace" font-weight="700" font-size="14">${Math.round(p*100)}%</text></svg>`}
+
+function renderTreino(){
+  const d=DAYS[sel]; document.documentElement.style.setProperty("--day",d.c||"#3A4150");
+  if(!d.ex){$("main").innerHTML=`<div class="restday"><h2>${d.d} · Descanso</h2>Dia de recuperação. Próximo treino: <b>${nextTrain()}</b>.</div>`;return}
+  const dl=doneList(sel), n=dl.length, tot=d.ex.length, isT=sel===todayIdx;
+  const w=S.work;
+  let clock;
+  if(w){clock=`<div><div class="lbl">Treino em andamento · ${SHORT[w.day]}</div><div class="t" id="workT">${fmt(Date.now()-w.start)}</div><div class="since">Início às ${new Date(w.start).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</div></div><button class="btn stop" id="workBtn">Finalizar</button>`}
+  else{clock=`<div><div class="lbl">Tempo total de treino</div><div class="t">00:00</div><div class="since">${isT?'Toque em iniciar quando chegar':'Você está vendo outro dia'}</div></div><button class="btn" id="workBtn">Iniciar treino</button>`}
+  $("main").innerHTML=`
+   <section class="dayhead"><div><h2>${d.d}</h2><p>${d.t} · ${n} de ${tot} feitos</p></div>${ring(n/tot)}</section>
+   <section class="clock">${clock}</section>
+   <section class="list">${d.ex.map((e,j)=>{const[a,b]=IMG(e.i);return `
+     <div class="ex ${dl.includes(j)?'done':''}">
+       <button class="anim" data-open="${j}" aria-label="Ver ${e.n}"><img src="${a}" alt="" loading="lazy"><img src="${b}" alt="" loading="lazy"></button>
+       <button class="info" data-open="${j}"><div class="grp">${e.g}</div><div class="nm">${e.n}</div><div class="sr">${e.s}${setsTxt(j,e)}</div></button>
+       <button class="chk" data-chk="${j}" aria-label="Marcar ${e.n} como feito"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
+     </div>`}).join("")}</section>`;
+  $("workBtn").onclick=toggleWork;
+  $("main").querySelectorAll("[data-chk]").forEach(b=>b.onclick=()=>toggleDone(sel,+b.dataset.chk));
+  $("main").querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>openSheet(+b.dataset.open));
+}
+function nSets(e){const m=String(e.s).match(/^(\d+)\s*x/);return m?+m[1]:0}
+function setsTxt(j,e){const k=nSets(e);if(!k)return"";const v=((S.sets[T()]||{})[sel+"-"+j])||0;return v?` · ${v}/${k} séries`:""}
+function nextTrain(){for(let k=1;k<8;k++){const i=(sel+k)%7;if(DAYS[i].ex)return DAYS[i].d.toLowerCase()}}
+
+function toggleDone(d,j){
+  const t=T();S.done[t]=S.done[t]||{};const L=S.done[t][d]=S.done[t][d]||[];
+  const k=L.indexOf(j);k<0?L.push(j):L.splice(k,1);save("done",S.done);render();
+}
+function toggleWork(){
+  if(S.work){
+    const w=S.work,end=Date.now(),d=DAYS[w.day];
+    S.hist.unshift({date:dkey(new Date(w.start)),day:w.day,start:w.start,end,n:doneList(w.day).length,total:d.ex?d.ex.length:0});
+    S.work=null;save("hist",S.hist);save("work",null);releaseWake();
+  }else{
+    S.work={start:Date.now(),day:sel};save("work",S.work);
+    if(!S.rest.run&&!S.rest.acc){} wake();
+  }
+  render();
+}
+
+function renderHist(){
+  document.documentElement.style.setProperty("--day","#3A4150");
+  const H=S.hist;
+  if(!H.length){$("main").innerHTML=`<div class="empty">Nenhum treino finalizado ainda.<br>Toque em <b>Iniciar treino</b> ao chegar na academia e em <b>Finalizar</b> ao sair.</div>`;return}
+  const now=Date.now(),w7=H.filter(h=>now-h.start<7*864e5);
+  const avg=H.reduce((a,h)=>a+(h.end-h.start),0)/H.length;
+  $("main").innerHTML=`<div class="stats"><div class="stat"><b>${H.length}</b><span>treinos</span></div><div class="stat"><b>${w7.length}</b><span>últimos 7 dias</span></div><div class="stat"><b>${fmt(avg)}</b><span>média</span></div></div>
+  <div class="hist">${H.map((h,k)=>{const d=DAYS[h.day];const dt=new Date(h.start);return `<div class="hrow"><i style="background:${d.c||'#3A4150'}"></i>
+   <div><b>${SHORT[h.day]} · ${d.t||''}</b><div class="m">${dt.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"2-digit"})} · ${dt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}–${new Date(h.end).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})} · ${h.n}/${h.total} exercícios</div></div>
+   <div class="d">${fmt(h.end-h.start)}</div></div>`}).join("")}</div>`;
+}
+
+function render(){renderTabs();$("vTreino").classList.toggle("on",S.view==="treino");$("vHist").classList.toggle("on",S.view==="hist");S.view==="treino"?renderTreino():renderHist()}
+$("vTreino").onclick=()=>{S.view="treino";render()};
+$("vHist").onclick=()=>{S.view="hist";render()};
+
+/* sheet */
+function openSheet(j){
+  const d=DAYS[sel],e=d.ex[j],[a,b]=IMG(e.i),k=nSets(e),t=T(),key=sel+"-"+j;
+  const v=((S.sets[t]||{})[key])||0, done=doneList(sel).includes(j);
+  $("sheetIn").innerHTML=`<div class="bar"></div><div class="anim"><img src="${a}" alt="${e.n} – início"><img src="${b}" alt="${e.n} – fim"></div>
+   <div class="grp" style="margin-top:12px">${e.g} · ${d.d}</div><h3>${e.n}</h3><div class="sr" style="font-size:14px">${e.s}</div>
+   ${k?`<div class="note">Toque nas séries conforme for fazendo:</div><div class="sets">${Array.from({length:k},(_,x)=>`<button class="set ${x<v?'on':''}" data-s="${x+1}">${x+1}</button>`).join("")}</div>`:''}
+   <div class="row"><button class="btn ghost" id="shClose">Fechar</button><button class="btn" id="shDone">${done?'Desmarcar':'Marcar como feito'}</button></div>`;
+  $("scrim").hidden=false;$("sheet").hidden=false;
+  $("sheetIn").querySelectorAll("[data-s]").forEach(bt=>bt.onclick=()=>{
+    const s=+bt.dataset.s;S.sets[t]=S.sets[t]||{};S.sets[t][key]=(S.sets[t][key]===s)?s-1:s;save("sets",S.sets);
+    if(S.sets[t][key]===k&&!doneList(sel).includes(j))toggleDone(sel,j);else render();
+    openSheet(j);
+  });
+  $("shClose").onclick=closeSheet;
+  $("shDone").onclick=()=>{toggleDone(sel,j);closeSheet()};
+}
+function closeSheet(){$("scrim").hidden=true;$("sheet").hidden=true}
+$("scrim").onclick=closeSheet;
+
+/* rest stopwatch (free) */
+const PLAY='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>',PAUSE='<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
+const restMs=()=>S.rest.acc+(S.rest.run?Date.now()-S.rest.start:0);
+function drawRest(){$("restT").textContent=fmt(restMs());$("restT").classList.toggle("run",S.rest.run);$("restGo").innerHTML=S.rest.run?PAUSE:PLAY;$("restGo").setAttribute("aria-label",S.rest.run?"Pausar descanso":"Iniciar descanso")}
+$("restGo").onclick=()=>{const r=S.rest;if(r.run){r.acc+=Date.now()-r.start;r.run=false}else{r.start=Date.now();r.run=true}save("rest",r);drawRest()};
+$("restReset").onclick=()=>{const r=S.rest;r.acc=0;r.start=Date.now();save("rest",r);drawRest()};
+
+/* tick */
+setInterval(()=>{drawRest();const w=$("workT");if(w&&S.work)w.textContent=fmt(Date.now()-S.work.start)},250);
+let lastDay=T();setInterval(()=>{if(T()!==lastDay){lastDay=T();render()}},60000);
+
+/* keep screen on while training (if allowed) */
+let lock=null;async function wake(){try{lock=await navigator.wakeLock.request("screen")}catch(e){}}
+function releaseWake(){try{lock&&lock.release()}catch(e){}lock=null}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){if(S.work)wake();render()}});
+if(S.work)wake();
+
+render();drawRest();
+if("serviceWorker" in navigator&&location.protocol==="https:"){try{navigator.serviceWorker.register("sw.js").catch(()=>{})}catch(e){}}
+</script>
+</body></html>
